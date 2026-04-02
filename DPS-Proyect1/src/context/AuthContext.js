@@ -7,6 +7,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
@@ -23,7 +25,7 @@ export function AuthProvider({ children }) {
     const usersGuardados = JSON.parse(localStorage.getItem("users")) || [];
 
     if (usersGuardados.length === 0) {
-      fetch("http://localhost:3001/users")
+      fetch(`${API_URL}/users`)
         .then((response) => response.json())
         .then((usersDelServer) => {
           localStorage.setItem("users", JSON.stringify(usersDelServer));
@@ -60,7 +62,7 @@ export function AuthProvider({ children }) {
 
     if (users.length === 0) {
       try {
-        const response = await fetch("http://localhost:3001/users");
+        const response = await fetch(`${API_URL}/users`);
         const usersDelServer = await response.json();
 
         localStorage.setItem("users", JSON.stringify(usersDelServer));
