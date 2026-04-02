@@ -1,3 +1,8 @@
+/* 
+  Estilos globales de la aplicación.
+  Define Tailwind y animaciones reutilizables para modales y transiciones.
+*/
+
 @import "tailwindcss";
 
 @theme {
@@ -5,12 +10,24 @@
   --animate-slide-up: slideUp 0.2s ease-out;
 }
 
+/* Animación de aparición suave. */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
+/* Animación de entrada desde abajo. */
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

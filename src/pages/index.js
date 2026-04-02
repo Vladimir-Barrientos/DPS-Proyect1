@@ -1,3 +1,10 @@
+/**
+ * Página principal de acceso.
+ *
+ * Permite iniciar sesión o registrar un nuevo usuario
+ * con validaciones básicas de nombre, correo y contraseña.
+ */
+
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "../context/AuthContext";
@@ -7,16 +14,15 @@ export default function Home() {
   const { login, register } = useAuth();
 
   const [isLogin, setIsLogin] = useState(true);
-
   const [formData, setFormData] = useState({
-    name: "",
+    nombre: "",
     email: "",
     password: "",
-    role: "usuario",
+    rol: "usuario",
   });
-
   const [message, setMessage] = useState("");
 
+  // Actualiza el estado del formulario según el campo editado.
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -25,33 +31,41 @@ export default function Home() {
     }));
   };
 
+  // Valida el formato básico del correo electrónico.
   const validateEmail = (email) => {
-    return /\S+@\S+\.\S+/.test(email);
+    return /^[A-Za-z0-9.]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email);
   };
 
-  const handleSubmit = (e) => {
+  // Permite únicamente letras y espacios en el nombre.
+  const validateName = (nombre) => {
+    return /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/.test(nombre);
+  };
+
+  // Obtiene los usuarios guardados en localStorage.
+  const getUsers = () => {
+    return JSON.parse(localStorage.getItem("users")) || [];
+  };
+
+  // Maneja el flujo de inicio de sesión o registro
+  // según el modo actual del formulario.
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
 
-    const { name, email, password, role } = formData;
-
-    if (!email || !password || (!isLogin && !name)) {
-      setMessage("Completa todos los campos obligatorios.");
-      return;
-    }
-
-    if (!validateEmail(email)) {
-      setMessage("Ingresa un correo válido.");
-      return;
-    }
-
-    if (password.length < 4) {
-      setMessage("La contraseña debe tener al menos 4 caracteres.");
-      return;
-    }
+    const { nombre, email, password, rol } = formData;
 
     if (isLogin) {
-      const result = login(email, password);
+      if (!email.trim() || !password.trim()) {
+        setMessage("Completa todos los campos obligatorios.");
+        return;
+      }
+
+      if (!validateEmail(email.trim())) {
+        setMessage("Ingresa un correo válido.");
+        return;
+      }
+
+      const result = await login(email.trim(), password);
 
       if (result.success) {
         setMessage("Inicio de sesión exitoso.");
@@ -59,29 +73,80 @@ export default function Home() {
       } else {
         setMessage(result.message);
       }
+
+      return;
+    }
+
+    const users = getUsers();
+
+    if (!nombre.trim()) {
+      setMessage("El nombre no puede quedar vacío.");
+      return;
+    }
+
+    if (!validateName(nombre.trim())) {
+      setMessage("El nombre no debe contener números ni símbolos.");
+      return;
+    }
+
+    const nombreRepetido = users.some(
+      (user) =>
+        (user.nombre || "").toLowerCase().trim() === nombre.toLowerCase().trim()
+    );
+
+    if (nombreRepetido) {
+      setMessage("Ese nombre ya está registrado.");
+      return;
+    }
+
+    if (!email.trim()) {
+      setMessage("El correo no puede quedar vacío.");
+      return;
+    }
+
+    if (!validateEmail(email.trim())) {
+      setMessage(
+        "El correo solo puede contener letras, números y puntos. No se permiten símbolos especiales."
+      );
+      return;
+    }
+
+    const emailRepetido = users.some(
+      (user) =>
+        (user.email || "").toLowerCase().trim() === email.toLowerCase().trim()
+    );
+
+    if (emailRepetido) {
+      setMessage("Ese correo ya está registrado.");
+      return;
+    }
+
+    if (!password.trim()) {
+      setMessage("La contraseña no puede quedar vacía.");
+      return;
+    }
+
+    const newUser = {
+      id: Date.now().toString(),
+      nombre: nombre.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+      rol,
+    };
+
+    const result = register(newUser);
+
+    if (result.success) {
+      setMessage("Usuario registrado correctamente. Ahora inicia sesión.");
+      setIsLogin(true);
+      setFormData({
+        nombre: "",
+        email: "",
+        password: "",
+        rol: "usuario",
+      });
     } else {
-      const newUser = {
-        id: Date.now(),
-        name,
-        email,
-        password,
-        role,
-      };
-
-      const result = register(newUser);
-
-      if (result.success) {
-        setMessage("Usuario registrado correctamente. Ahora inicia sesión.");
-        setIsLogin(true);
-        setFormData({
-          name: "",
-          email: "",
-          password: "",
-          role: "usuario",
-        });
-      } else {
-        setMessage(result.message);
-      }
+      setMessage(result.message);
     }
   };
 
@@ -97,16 +162,16 @@ export default function Home() {
             <>
               <input
                 type="text"
-                name="name"
+                name="nombre"
                 placeholder="Nombre"
-                value={formData.name}
+                value={formData.nombre}
                 onChange={handleChange}
                 style={styles.input}
               />
 
               <select
-                name="role"
-                value={formData.role}
+                name="rol"
+                value={formData.rol}
                 onChange={handleChange}
                 style={styles.input}
               >
@@ -144,6 +209,7 @@ export default function Home() {
         <p style={styles.switchText}>
           {isLogin ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
           <button
+            type="button"
             onClick={() => {
               setIsLogin(!isLogin);
               setMessage("");

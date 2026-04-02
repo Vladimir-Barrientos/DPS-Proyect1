@@ -1,3 +1,10 @@
+/**
+ * Contexto global de autenticación.
+ *
+ * Administra el usuario en sesión, el inicio y cierre de sesión,
+ * y el registro de usuarios usando localStorage como persistencia local.
+ */
+
 import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext();
@@ -5,36 +12,36 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
+  // Al iniciar la app, recupera el usuario guardado en localStorage.
+  // Si no hay usuarios locales, intenta cargarlos desde el servidor.
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
 
-    // si no hay usuarios en localStorage, traemos los del servidor (los demo de db.json)
     const usersGuardados = JSON.parse(localStorage.getItem("users")) || [];
+
     if (usersGuardados.length === 0) {
       fetch("http://localhost:3001/users")
-        .then((r) => r.json())
+        .then((response) => response.json())
         .then((usersDelServer) => {
-          // normalizamos para que tengan name/role Y nombre/rol, así todo el código los entiende
-          const normalizados = usersDelServer.map((u) => ({
-            ...u,
-            name: u.nombre,
-            role: u.rol,
-          }));
-          localStorage.setItem("users", JSON.stringify(normalizados));
+          localStorage.setItem("users", JSON.stringify(usersDelServer));
         })
         .catch(() => {
-          // si el servidor no está corriendo, igual funciona con usuarios registrados
+          // Si falla la carga inicial, la app seguirá usando localStorage.
         });
     }
   }, []);
 
+  // Registra un nuevo usuario en almacenamiento local
+  // si el correo todavía no existe.
   const register = (newUser) => {
     const users = JSON.parse(localStorage.getItem("users")) || [];
 
-    const exists = users.find((u) => u.email === newUser.email);
+    const exists = users.find(
+      (usuario) => usuario.email.toLowerCase() === newUser.email.toLowerCase()
+    );
 
     if (exists) {
       return { success: false, message: "El correo ya está registrado" };
@@ -46,32 +53,41 @@ export function AuthProvider({ children }) {
     return { success: true, message: "Usuario registrado correctamente" };
   };
 
-  const login = (email, password) => {
-    const users = JSON.parse(localStorage.getItem("users")) || [];
+  // Inicia sesión validando correo y contraseña.
+  // Si no hay usuarios en localStorage, intenta obtenerlos del servidor.
+  const login = async (email, password) => {
+    let users = JSON.parse(localStorage.getItem("users")) || [];
+
+    if (users.length === 0) {
+      try {
+        const response = await fetch("http://localhost:3001/users");
+        const usersDelServer = await response.json();
+
+        localStorage.setItem("users", JSON.stringify(usersDelServer));
+        users = usersDelServer;
+      } catch {
+        return {
+          success: false,
+          message: "No se pudo conectar con el servidor de usuarios",
+        };
+      }
+    }
 
     const foundUser = users.find(
-      (u) => u.email === email && u.password === password
+      (usuario) => usuario.email === email && usuario.password === password
     );
 
     if (!foundUser) {
       return { success: false, message: "Correo o contraseña incorrectos" };
     }
 
-    // guardamos con los dos formatos de campos para que dashboard (name/role) y tareas (nombre/rol) funcionen
-    const userNormalizado = {
-      ...foundUser,
-      name: foundUser.nombre || foundUser.name,
-      nombre: foundUser.nombre || foundUser.name,
-      role: foundUser.rol || foundUser.role,
-      rol: foundUser.rol || foundUser.role,
-    };
-
-    setUser(userNormalizado);
-    localStorage.setItem("user", JSON.stringify(userNormalizado));
+    setUser(foundUser);
+    localStorage.setItem("user", JSON.stringify(foundUser));
 
     return { success: true, message: "Inicio de sesión exitoso" };
   };
 
+  // Elimina la sesión actual del estado y del localStorage.
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
