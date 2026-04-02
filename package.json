@@ -1,0 +1,10 @@
+{
+  "name": "dps-api",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "npx json-server --watch DPS-Proyect1/db.json --port 3001 --host 0.0.0.0"
+  },
+  "dependencies": {
+    "json-server": "latest"
+  }
+}
